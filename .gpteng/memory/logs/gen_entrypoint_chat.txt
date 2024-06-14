@@ -1,0 +1,183 @@
+
+2024-06-14T00:28:58.798779
+================================ System Message ================================
+
+You will get information about a codebase that is currently on disk in the current folder.
+The user will ask you to write a script that runs the code in a specific way.
+You will answer with code blocks that include all the necessary terminal commands.
+Do not install globally. Do not use sudo.
+Do not explain the code, just give the commands.
+Do not use placeholders, use example values (like . for a folder argument) if necessary.
+
+
+================================ Human Message =================================
+
+
+        Make a unix script that
+        a) installs dependencies
+        b) runs all necessary parts of the codebase (in parallel if necessary)
+        
+Information about the codebase:
+
+```
+File: Structure
+1 project
+2 app
+3 __init__.py
+4 main.py
+5 models
+6 __init__.py
+7 knowledge.py
+8 parsers
+9 __init__.py
+10 excel_parser.py
+11 image_parser.py
+12 ...
+13 requirements.txt
+14 gradio_app
+15 __init__.py
+16 app.py
+17 ...
+18 fastapi_app
+19 __init__.py
+20 main.py
+21 ...
+22 plantuml
+23 __init__.py
+24 generator.py
+25 ...
+26 tests
+27 __init__.py
+28 test_knowledge.py
+29 ...
+30 README.md
+
+File: requirements.txt
+1 fastapi
+2 gradio
+3 plantuml
+4 openpyxl
+
+File: app/main.py
+1 from fastapi import FastAPI
+2 from models.knowledge import Knowledge
+3 from parsers.excel_parser import ExcelParser
+4 from parsers.image_parser import ImageParser
+5 
+6 app = FastAPI()
+7 
+8 @app.post("/upload_file")
+9 async def upload_file(file: UploadFile = Depends()):
+10     knowledge = Knowledge()
+11     if file.content_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+12         parser = ExcelParser()
+13     elif file.content_type == "image/jpeg":
+14         parser = ImageParser()
+15     else:
+16         return {"error": "Unsupported file type"}
+17     knowledge.add(parser.parse(file))
+18     return {"message": "File uploaded successfully"}
+
+File: models/knowledge.py
+1 from dataclasses import dataclass
+2 
+3 @dataclass
+4 class Knowledge:
+5     data: list = None
+6 
+7     def add(self, data):
+8         if self.data is None:
+9             self.data = []
+10         self.data.extend(data)
+
+File: parsers/excel_parser.py
+1 import openpyxl
+2 
+3 class ExcelParser:
+4     def parse(self, file):
+5         wb = openpyxl.load_workbook(file)
+6         data = []
+7         for sheet in wb:
+8             for row in sheet.iter_rows(values_only=True):
+9                 data.append(row)
+10         return data
+
+File: parsers/image_parser.py
+1 # This parser is not implemented as it's not clear what kind of data should be extracted from an image
+2 class ImageParser:
+3     def parse(self, file):
+4         # TO DO: implement image parsing logic
+5         pass
+
+File: gradio_app/app.py
+1 import gradio as gr
+2 
+3 def create_app():
+4     with gr.Blocks() as app:
+5         file_input = gr.inputs.File(type="file")
+6         btn = gr.inputs.Button("Upload")
+7         output = gr.outputs.Textbox(label="Output")
+8 
+9         def upload_file(file):
+10             # Call the FastAPI endpoint to upload the file
+11             response = requests.post("http://localhost:8000/upload_file", files={"file": file})
+12             return response.text
+13 
+14         btn.click(fn=upload_file, inputs=file_input, outputs=output)
+15 
+16     return app
+17 
+18 if __name__ == "__main__":
+19     app = create_app()
+20     app.launch()
+
+File: plantuml/generator.py
+1 import plantuml
+2 
+3 def generate_sequence_diagram(knowledge):
+4     # Create a PlantUML sequence diagram from the knowledge data
+5     diagram = plantuml.PlantUML()
+6     diagram.skinparams("sequenceDiagram")
+7     for item in knowledge.data:
+8         diagram.add(item)
+9     return diagram.get_png()
+
+File: tests/test_knowledge.py
+1 import unittest
+2 from models.knowledge import Knowledge
+3 
+4 class TestKnowledge(unittest.TestCase):
+5     def test_add_data(self):
+6         knowledge = Knowledge()
+7         knowledge.add(["item1", "item2"])
+8         self.assertEqual(knowledge.data, [["item1", "item2"]])
+9 
+10 if __name__ == "__main__":
+11     unittest.main()
+
+```
+
+================================== Ai Message ==================================
+
+Here is the Unix script that installs dependencies and runs the necessary parts of the codebase:
+
+```bash
+#!/bin/bash
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run FastAPI app
+uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+
+# Run Gradio app
+python gradio_app/app.py &
+
+# Run PlantUML generator
+# (no need to run this as it's not a standalone app)
+
+# Run tests
+python -m unittest tests/test_knowledge.py
+```
+
+Note: This script assumes that you have `uvicorn` installed. If you don't have it installed, you can install it by running `pip install uvicorn`.
